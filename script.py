@@ -1,4 +1,5 @@
 #HII
+#kolo elna
 import subprocess
 import sys
 
