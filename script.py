@@ -1,5 +1,3 @@
-#HII
-#kolo elna
 import subprocess
 import sys
 
@@ -14,7 +12,7 @@ def receive_signal(output_file, frequency, sample_rate, if_gain, gain):
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
-    if process.returncode == 0:
+    if process.returncode != 0:
         print("Error in receive signal:", stderr.decode())
     else:
         print("Receive signal success:", stdout.decode())
@@ -30,7 +28,7 @@ def transmit_signal(input_file, frequency, sample_rate, antenna_gain, tx_gain):
     ]
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
-    if process.returncode == 0:
+    if process.returncode != 0:
         print("Error in transmit signal:", stderr.decode())
     else:
         print("Transmit signal success:", stdout.decode())
