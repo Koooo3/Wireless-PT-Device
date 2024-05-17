@@ -2,15 +2,8 @@ import subprocess
 import os
 import time
 import threading 
-import signal
-import select
 import tkinter as tk
 import tkinter.font as tkFont
-import csv
-import queue
-from PIL import Image, ImageTk
-from tkinter import ttk
-from tkinter import messagebox
 unified_bg_color = "#282828"
 unified_fg_color = "#FFFFFF"
 
@@ -36,9 +29,9 @@ def main_page():
     # Page and Font Setup.
     new_frame(content_frame)
     weight_setup(2,3)
-    content_frame.grid_rowconfigure(0,weight=0)
-    unified_button_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
+    content_frame.grid_rowconfigure(0,weight=0) #Give more space for the commands
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
     title_label = tk.Label(content_frame, text="Attack Vector", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
@@ -61,11 +54,11 @@ def wifi_page():
     # Page and Font Setup.
     new_frame(content_frame)
     weight_setup(5, 1)
-    unified_button_font = tkFont.Font(family="Helvetica", size=24, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
-    title_label = tk.Label(content_frame, text="Select Attack", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label = tk.Label(content_frame, text="Wi-Fi: Select Attack", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
     title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
     # Create and arrange buttons for different Wi-Fi attack methods
@@ -77,15 +70,15 @@ def wifi_page():
         button.grid(row=1 + index, column=0, padx=10, pady=10, sticky="nsew")
 
     # Back button
-    return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=main_page)
-    return_button.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=main_page)
+    back_button.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
 
 def enable_monitor_mode():
     """Displays WLAN interfaces as selectable buttons and navigates to the scanning page."""
     new_frame(content_frame)
     weight_setup(3, 1) 
-    unified_button_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
     title_label = tk.Label(content_frame, text="Select an Interface", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
@@ -102,8 +95,8 @@ def enable_monitor_mode():
         interface_button.grid(row=index, column=0, padx=10, pady=10, sticky="nsew")
 
         # Back button
-    return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=wifi_page)
-    return_button.grid(row=len(interfaces) + 1, column=0, padx=10, pady=10, sticky="nsew")
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=wifi_page)
+    back_button.grid(row=len(interfaces) + 1, column=0, padx=10, pady=10, sticky="nsew")
 
 def enable_monitor(interface, interface_button):
     """Set the given WLAN interface into monitor mode and return the new interface name."""
@@ -124,15 +117,14 @@ def enable_monitor(interface, interface_button):
                 interface_button.config(text=line.split()[0])
                 return 
     except subprocess.CalledProcessError as e:
-        print(f"Error enabling monitor mode: {e}")
         return None
 
 def scan_targets():
     """Displays WLAN interfaces as selectable buttons and navigates to the scanning page."""
     new_frame(content_frame)
     weight_setup(4, 1) 
-    unified_button_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
     title_label = tk.Label(content_frame, text="Select an Interface", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
@@ -153,8 +145,8 @@ def scan_targets():
     remove_file_button.grid(row=len(interfaces) + 1, column=0, padx=10, pady=10, sticky="nsew")
 
     # Back button
-    return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=wifi_page)
-    return_button.grid(row=len(interfaces) + 2, column=0, padx=10, pady=10, sticky="nsew")
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=wifi_page)
+    back_button.grid(row=len(interfaces) + 2, column=0, padx=10, pady=10, sticky="nsew")
 
 def remove_last_scan_file(remove_file_button):
     """Removes the last scan file."""
@@ -194,7 +186,6 @@ def set_monitor_mode(interface):
             if "Mode:Monitor" in line:
                 return line.split()[0]
     except subprocess.CalledProcessError as e:
-        print(f"Error enabling monitor mode: {e}")
         return None
 
 scanning_process = None
@@ -204,15 +195,16 @@ def scanning():
 
     new_frame(content_frame)
     weight_setup(4, 1)
-    unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     title_label = tk.Label(content_frame, text="Scanning", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
     title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
-    scanning_output_label = tk.Label(content_frame, text="Scanning in progress...", bg=unified_bg_color, fg=unified_fg_color, font=tkFont.Font(size=18))
+    scanning_output_label = tk.Label(content_frame, text="Scanning in progress...", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
     scanning_output_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-    stop_scanning_button = tk.Button(content_frame, text="Stop Scanning", font=tkFont.Font(size=24), bg=unified_bg_color, fg=unified_fg_color, command=wifi_stop_scanning)
+    stop_scanning_button = tk.Button(content_frame, text="Stop Scanning", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=wifi_stop_scanning)
     stop_scanning_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
     # Start the airodump-ng command in a separate thread to avoid blocking the GUI
@@ -238,7 +230,8 @@ def results_page():
     new_frame(content_frame)
     weight_setup(6, 5)  # Adjust grid weights (rows, columns)
     small_button_font = tkFont.Font(family="Helvetica", size=8, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
     title_label = tk.Label(content_frame, text="Results", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
@@ -290,8 +283,8 @@ def choose_attack_page(bssid, essid, channel, encryption):
     """Display a page to choose an attack type for the given target."""
     new_frame(content_frame)
     weight_setup(5, 1)  # Adjust grid weights
-    unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label showing the target information
     title_text = f"Choose Attack for {essid or 'N/A'}\n({bssid})\nChannel ({channel})\nEnc ({encryption})"
@@ -313,23 +306,22 @@ def choose_attack_page(bssid, essid, channel, encryption):
     # Back button to return to results page
     back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=results_page)
     back_button.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
+
 deauth_process = None
 def set_channel(interface, channel):
     """Set the wireless interface to a specific channel."""
     try:
         # Setting the channel using iwconfig
         subprocess.run(['sudo', 'iwconfig', interface, 'channel', str(channel)], check=True)
-        print(f"Channel set to {channel} on {interface}.")
     except subprocess.CalledProcessError as e:
-        print(f"Failed to set channel: {e}")
-
+        pass
 
 def deauth_page(bssid, essid, channel, encryption):
     """Display the deauthentication attack page and execute the attack."""
     new_frame(content_frame)
     weight_setup(4, 1)  # Adjust grid weights
-    unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_button_font = tkFont.Font(family="Helvetica", size=24, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
     title_label = tk.Label(content_frame, text="Deauthentication Attack", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
@@ -349,7 +341,8 @@ def deauth_page(bssid, essid, channel, encryption):
                             command=lambda bssid=bssid, essid=essid, channel=channel, encryption=encryption: choose_attack_page(bssid, essid, channel, encryption))
     back_button.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
 
-    threading.Thread(target=set_channel, args=(monitor_interface, channel)).start()
+    thread = threading.Thread(target=set_channel, args=(monitor_interface, channel))
+    thread.start()
 
 
 def deauth(bssid, essid, channel, encryption, execute_button):
@@ -370,32 +363,7 @@ def stop_deauth(execute_button):
         deauth_process.terminate()  # This sends SIGTERM, you could also send SIGINT if needed
         deauth_process.wait()       # Wait for the process to terminate
         deauth_process = None       # Reset the global variable
-    # Update the button to show it's stopped and reset the command to start deauth again
     execute_button.config(text="Terminated")
-
-
-# def test(target_info_label,execute_button):
-#     thread = threading.Thread(target=testt, args=(monitor_interface, target_info_label))
-#     thread.start()
-#     execute_button.config(text='stop', command=lambda: stoop(execute_button))
-
-# def testt(interface, target_info_label):
-#     global scanning_process
-#     command = ['sudo', 'airodump-ng', interface]
-#     scanning_process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-#     texts = ''
-#     for line in scanning_process.stdout.read():
-#         texts += line.decode()
-#         target_info_label.config(text=texts)
-
-# def stoop(execute_button):
-#     global scanning_process  # Make sure to access the global variable
-#     if scanning_process:
-#         scanning_process.terminate()  # This sends SIGTERM, you could also send SIGINT if needed
-#         scanning_process.wait()       # Wait for the process to terminate
-#         scanning_process = None       # Reset the global variable
-#     # Update the button to show it's stopped and reset the command to start deauth again
-#     execute_button.config(text="Terminated")
 
 crack_deauth = None
 crack_airodump = None
@@ -404,8 +372,8 @@ def password_crack_page(bssid, essid, channel, encryption):
     """Display the password cracking attack page."""
     new_frame(content_frame)
     weight_setup(4, 1)
-    unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_button_font = tkFont.Font(family="Helvetica", size=24, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
     title_label = tk.Label(content_frame, text="Password Crack Attack", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
@@ -426,7 +394,8 @@ def password_crack_page(bssid, essid, channel, encryption):
     back_button.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
 
     # Set channel
-    threading.Thread(target=set_channel, args=(monitor_interface, channel)).start()
+    thread = threading.Thread(target=set_channel, args=(monitor_interface, channel))
+    thread.start()
 
 
 def start_password_cracking(bssid, essid, channel, encryption, execute_button, target_info_label):
@@ -483,7 +452,7 @@ def stop_cracking_process(bssid, essid, channel, encryption, execute_button, tar
         crack_aircrack.terminate()
         crack_aircrack.wait()
         crack_aircrack = None
-    execute_button.config(text="Cracking  stopped. Read contents", command=lambda: read_password(bssid, essid, channel, encryption, execute_button, target_info_label))
+    execute_button.config(text="Cracking  stopped. Press to read contents", command=lambda: read_password(bssid, essid, channel, encryption, execute_button, target_info_label))
 
 def read_password(bssid, essid, channel, encryption, execute_button, target_info_label):
     """
@@ -506,8 +475,8 @@ def beacon_frame_flooding_page():
     new_frame(content_frame)
     weight_setup(4, 3)  # Adjust grid weights for 2 rows and 3 columns
 
-    unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
     title_label = tk.Label(content_frame, text="Select Beacon Attack Intensity", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
@@ -531,8 +500,8 @@ def execute_beacon_attack(list_path, num_beacons):
     """Display the page for executing the beacon frame flooding attack."""
     new_frame(content_frame)
     weight_setup(4, 1)  # Adjust grid weights for simplicity
-    unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_button_font = tkFont.Font(family="Helvetica", size=24, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
     title_label = tk.Label(content_frame, text="Beacon Attack", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
@@ -572,49 +541,225 @@ def stop_beacon_attack(execute_button):
     execute_button.config(text="Terminated. Go back to beacon page", command=beacon_frame_flooding_page)
 
 
-
 def evil_twin():
     print("Setting up Evil Twin...")  # Placeholder for actual function
+
+############################################### RFID Page #####################################
 
 def rfid_page():
     # Page and Font Setup.
     new_frame(content_frame)
-    weight_setup(3, 4)
-    unified_button_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
+    weight_setup(3, 3)
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
     title_label = tk.Label(content_frame, text="Select Operation", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
     title_label.grid(row=0, column=0, columnspan=4, padx=10, pady=10, sticky="nsew")
 
-    # Create Read and Write buttons
+    # Create Read, Write, and Simulate buttons
     read_button = tk.Button(content_frame, text="Read", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=read_card)
-    read_button.grid(row=1, column=0, columnspan=2,padx=10, pady=10, sticky="nsew")
+    read_button.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
     write_button = tk.Button(content_frame, text="Write", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=write_card)
-    write_button.grid(row=1, column=2, columnspan=2,padx=10, pady=10, sticky="nsew")
+    write_button.grid(row=1, column=1, padx=10, pady=10, sticky="nsew")
+    
+    simulate_button = tk.Button(content_frame, text="Simulate", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=simulate_card)
+    simulate_button.grid(row=1, column=2, padx=10, pady=10, sticky="nsew")
 
     # Back button
-    return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=main_page)
-    return_button.grid(row=2, column=0, columnspan=4, padx=10,pady=10, sticky="nsew")
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=main_page)
+    back_button.grid(row=2, column=0, columnspan=4, padx=10,pady=10, sticky="nsew")
+
 
 def read_card():
     new_frame(content_frame)
+    weight_setup(3, 1)
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
+    
+    # Title label
+    title_label = tk.Label(content_frame, text="Read Function", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+    
+    loading_label = tk.Label(content_frame, text="Scanning in progress...", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
+    loading_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+    
+    # Back button
+    back_button = tk.Button(content_frame, text="Back", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font, command=rfid_page)
+    back_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+    
+    content_frame.update()
+    
+    # Execute pm3 -c 'auto' command
+    result = subprocess.run(["pm3", "-c", "auto"], capture_output=True, text=True)
+    output = result.stdout
+    
+    # Check if a valid ISO 14443-A tag is found
+    if "[+] Valid ISO 14443-A tag found" in output:
+        # Extracting UID
+        uid = None
+        for line in output.split("\n"):
+            if line.startswith("[+]  UID:"):
+                uid = line.split(":")[1].replace(" ", "").strip()
+                break
+        
+        if uid:
+            keys_file = "hf-mf-{}-key.bin".format(uid)
+            
+            # Check if keys file already exists
+            if os.path.exists(keys_file):
+                loading_label.config(text="Card already saved.")
+            else:
+                loading_label.config(text="Valid Mifare card found, dumping its content...")
+                content_frame.update()
+                
+                # Dump keys
+                subprocess.run(["pm3", "-c", "hf mf chk --dump"], capture_output=True, text=True)
+                
+                # Generate filename for card content
+                saved_cards = [file for file in os.listdir() if file.startswith("card") and file.endswith(".bin")]
+                
+                if len(saved_cards) >= 8:
+                    # Remove the first card to overwrite
+                    os.remove(saved_cards[0])
+                
+                i = 1
+                while os.path.exists("card{}.bin".format(i)):
+                    i += 1
+                content_file = "card{}.bin".format(i)
+                
+                subprocess.run(["pm3", "-c", "hf mf dump --keys {} -f {}".format(keys_file, content_file)], capture_output=True, text=True)
+                
+                loading_label.config(text="Card{} saved".format(i))
+        
+    else:
+        loading_label.config(text="No card found")
+
 
 def write_card():
     new_frame(content_frame)
+    weight_setup(3, 1)
+    small_button_font = tkFont.Font(family="Helvetica", size=8, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
+    
+    # Title label
+    title_label = tk.Label(content_frame, text="Write Function", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+    
+    # Back button
+    back_button = tk.Button(content_frame, text="Back", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font, command=rfid_page)
+    back_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+    
+    content_frame.update()
+    
+    # Get a list of saved cards
+    saved_cards = [file for file in os.listdir() if file.startswith("card") and file.endswith(".bin")]
+    
+    if saved_cards:
+        for i, card in enumerate(saved_cards):
+            card_button = tk.Button(content_frame, text=card, bg=unified_bg_color, fg=unified_fg_color, font=small_button_font, command=lambda c=card: write_selected_card(c))
+            card_button.grid(row=i+1, column=0, padx=10, pady=10, sticky="nsew")
+    else:
+        no_cards_label = tk.Label(content_frame, text="No cards saved yet.", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
+        no_cards_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+
+def write_selected_card(card):
+    new_frame(content_frame)
+    weight_setup(3, 1)
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
+
+    # Title label
+    title_label = tk.Label(content_frame, text="Write Function", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+    write_label = tk.Label(content_frame, text="Writing card...", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
+    write_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+    
+    # Back button
+    back_button = tk.Button(content_frame, text="Back", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font, command=rfid_page)
+    back_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
+    
+    content_frame.update()
+    
+    # Execute pm3 -c 'hf mf cload card{num}.eml' command
+    result = subprocess.run(["pm3", "-c", "hf mf cload {}".format(card[:-4] + ".eml")], capture_output=True, text=True)
+    print("hf mf cload {}".format(card[:-4] + ".eml"))
+    write_label.config(text="Writing finished")
+
+def simulate_card():
+    new_frame(content_frame)
+    weight_setup(3, 1)
+    small_button_font = tkFont.Font(family="Helvetica", size=8, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
+    
+    # Title label
+    title_label = tk.Label(content_frame, text="Simulate Function", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+    # Back button
+    back_button = tk.Button(content_frame, text="Back", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font, command=rfid_page)
+    back_button.grid(row=2, column=0, columnspan=4, padx=10, pady=10, sticky="nsew")
+    
+    content_frame.update()
+    
+    # Get a list of saved cards
+    saved_cards = [file for file in os.listdir() if file.startswith("card") and file.endswith(".bin")]
+    
+    if saved_cards:
+        for i, card in enumerate(saved_cards):
+            card_button = tk.Button(content_frame, text=card, bg=unified_bg_color, fg=unified_fg_color, font=small_button_font, command=lambda c=card: simulate_selected_card(c))
+            card_button.grid(row=i+1, column=0, columnspan=4, padx=10, pady=10, sticky="nsew")
+    else:
+        no_cards_label = tk.Label(content_frame, text="No cards saved yet.", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
+        no_cards_label.grid(row=1, column=0, columnspan=4, padx=10, pady=10, sticky="nsew")
+
+def simulate_selected_card(card):
+    new_frame(content_frame)
+    weight_setup(3, 1)
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
+    
+    # Title label
+    title_label = tk.Label(content_frame, text="Simulating", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+    simulate_label = tk.Label(content_frame, text="Simulating card...", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font)
+    simulate_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
+    
+    # Back button
+    back_button = tk.Button(content_frame, text="Back", bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font, command=rfid_page)
+    back_button.grid(row=2, column=0, columnspan=4, padx=10, pady=10, sticky="nsew")
+    
+    content_frame.update()
+    
+    # Load the card into the device memory
+    result_load = subprocess.run(["pm3", "-c", "hf mf eload -f {}".format(card)], capture_output=True, text=True)
+    
+    # Simulate the card
+    result_simulate = subprocess.run(["pm3", "-c", "hf mf sim --1k"], capture_output=True, text=True)
+    
+    simulate_label.config(text="Simulation finished")
+
+
+
 
 freq_entry = None
 capturing_process= None
 transmitting_process= None
+
 def sub_ghz_page():
+    global freq_entry
+
     new_frame(content_frame)
     weight_setup(4, 1)  # Three rows, one column
-    global freq_entry
-    
     unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
     
-    title_label = tk.Label(content_frame, text="Stubby Subby:", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
+    title_label = tk.Label(content_frame, text="Sub-GHz: Select Attack", font=unified_title_font, bg=unified_bg_color, fg=unified_fg_color)
     title_label.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
     # Capture button
     capture_button = tk.Button(content_frame, text="Capture", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=capture_sub_ghz)
@@ -629,15 +774,14 @@ def sub_ghz_page():
     back_button.grid(row=3, column=0, padx=10, pady=10, sticky='nsew')
 
 def capture_sub_ghz():
-    new_frame(content_frame)
-    weight_setup(7, 3)  # Five rows, three columns for the number pad and other controls
     global freq_entry
 
-    
+    new_frame(content_frame)
+    weight_setup(7, 3)  
     unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=30, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
     
-    title_label = tk.Label(content_frame, text="Enter Frequency to Capture:", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
+    title_label = tk.Label(content_frame, text="Enter Frequency to Capture:", font=unified_title_font, bg=unified_bg_color, fg=unified_fg_color)
     title_label.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
 
     freq_entry = tk.Entry(content_frame, width=15, font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
@@ -667,21 +811,20 @@ def capture_sub_ghz():
     back_button.grid(row=6, column=0, columnspan=3, padx=10, pady=10, sticky='nsew')
 
 def capturing_page(freq, execute_button):
-    new_frame(content_frame)
-    weight_setup(4,1)  # Five rows, three columns for the number pad and other controls
     global freq_entry
 
+    new_frame(content_frame)
+    weight_setup(4,1)  # Five rows, three columns for the number pad and other controls
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
     
-    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=30, weight="bold")
-    
-    title_label = tk.Label(content_frame, text="Capture an RF Signal", font=unified_title_font, bg=unified_bg_color, fg=unified_fg_color)
+    title_label = tk.Label(content_frame, text="Capturing Function", font=unified_title_font, bg=unified_bg_color, fg=unified_fg_color)
     title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
     
     info_label = tk.Label(content_frame, text=f"Listening on {freq}MHz...", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
     info_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-    execute_button = tk.Button(content_frame, text="Stop Capturing. Terminate.", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
+    execute_button = tk.Button(content_frame, text="Stop Listening.", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
                            command=lambda: stop_capturing(execute_button))
     execute_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
@@ -725,9 +868,9 @@ def transmit_sub_ghz():
     # Page and Font Setup
     new_frame(content_frame)
     weight_setup(5, 3)
-    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
-    unified_choice_font = tkFont.Font(family="Helvetica", size=10, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
+    small_button_font = tkFont.Font(family="Helvetica", size=8, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
 
     # Title label
     title_label = tk.Label(content_frame, text="Select signal", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
@@ -749,25 +892,24 @@ def transmit_sub_ghz():
         btn.grid(row=1 + index // 3, column=index % 3, padx=5, pady=5, sticky="nsew")
 
     # Back button
-    return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=sub_ghz_page)
-    return_button.grid(row=4, column=0, columnspan=3, pady=10, sticky='nsew')
+    back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=sub_ghz_page)
+    back_button.grid(row=4, column=0, columnspan=3, pady=10, sticky='nsew')
 
 def transmitting_page(fp, fr, fn):
-    new_frame(content_frame)
-    weight_setup(4,1)  # Five rows, three columns for the number pad and other controls
     global freq_entry
 
+    new_frame(content_frame)
+    weight_setup(4,1)  # Five rows, three columns for the number pad and other controls
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=35, weight="bold")
     
-    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
-    unified_title_font = tkFont.Font(family="Helvetica", size=30, weight="bold")
-    
-    title_label = tk.Label(content_frame, text="Transmit an RF Signal", font=unified_title_font, bg=unified_bg_color, fg=unified_fg_color)
+    title_label = tk.Label(content_frame, text="Transmission Function", font=unified_title_font, bg=unified_bg_color, fg=unified_fg_color)
     title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
     
-    info_label = tk.Label(content_frame, text=f"Transmitting {fn} on {fr}...", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
+    info_label = tk.Label(content_frame, text=f"Transmitting {fn} on {fr}MHz...", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
     info_label.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
-    execute_button = tk.Button(content_frame, text="Stop Transmitting. Terminate.", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
+    execute_button = tk.Button(content_frame, text="Stop Transmitting.", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
                            command=lambda: stop_capturing(execute_button))
     execute_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
