@@ -11,19 +11,15 @@ import queue
 from PIL import Image, ImageTk
 from tkinter import ttk
 from tkinter import messagebox
-
-
 unified_bg_color = "#282828"
 unified_fg_color = "#FFFFFF"
 
 
-###############################################This is the functions space #####################################
 
 
-###############################################This is the functions space #####################################
 
 def weight_setup(r, c):
-    max_dimension = 12  # Maximum for both rows and columns
+    max_dimension = 12  # Theaoritical Maximum for both rows and columns
     # Set the specified rows and columns to weight 1
     for i in range(max_dimension):
         if i < r:
@@ -49,7 +45,7 @@ def main_page():
     title_label.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
 
     # Create buttons with specified size and font, and center them in the grid
-    wifi_button = tk.Button(content_frame, text="Wi-fi",
+    wifi_button = tk.Button(content_frame, text="Wi-Fi",
                             bg=unified_bg_color, fg=unified_fg_color, font=unified_button_font, command=wifi_page)
     wifi_button.grid(row=1, column=0, padx=10, pady=10, sticky="nsew")
 
@@ -73,8 +69,8 @@ def wifi_page():
     title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
 
     # Create and arrange buttons for different Wi-Fi attack methods
-    button_texts = ["Scan Targets", "Beacon Frame Flooding", "Evil Twin"]
-    button_commands = [scan_targets, beacon_frame_flooding_page, evil_twin]
+    button_texts = ["Enable Monitor Mode", "Scan Targets", "Beacon Frame Flooding"]
+    button_commands = [enable_monitor_mode, scan_targets, beacon_frame_flooding_page]
     
     for index, (text, command) in enumerate(zip(button_texts, button_commands)):
         button = tk.Button(content_frame, text=text, font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=command)
@@ -83,6 +79,54 @@ def wifi_page():
     # Back button
     return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=main_page)
     return_button.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
+
+def enable_monitor_mode():
+    """Displays WLAN interfaces as selectable buttons and navigates to the scanning page."""
+    new_frame(content_frame)
+    weight_setup(3, 1) 
+    unified_button_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
+    unified_title_font = tkFont.Font(family="Helvetica", size=48, weight="bold")
+
+    # Title label
+    title_label = tk.Label(content_frame, text="Select an Interface", bg=unified_bg_color, fg=unified_fg_color, font=unified_title_font)
+    title_label.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
+
+    # Get the available WLAN interfaces
+    result = subprocess.run(["iwconfig"], stdout=subprocess.PIPE, text=True)
+    interfaces = [line.split()[0] for line in result.stdout.splitlines() if "IEEE 802.11" in line]
+
+    # Create a button for each WLAN interface
+    for index, interface in enumerate(interfaces, start=1):
+        interface_button = tk.Button(content_frame, text=interface, font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color,
+                                     command=lambda iface=interface: enable_monitor(iface, interface_button))
+        interface_button.grid(row=index, column=0, padx=10, pady=10, sticky="nsew")
+
+        # Back button
+    return_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=wifi_page)
+    return_button.grid(row=len(interfaces) + 1, column=0, padx=10, pady=10, sticky="nsew")
+
+def enable_monitor(interface, interface_button):
+    """Set the given WLAN interface into monitor mode and return the new interface name."""
+    try:
+        # Stop conflicting processes that can interfere with airmon-ng using airmon-ng check kill
+        subprocess.run(["sudo", "airmon-ng", "check", "kill"], check=True)
+
+        # Place the interface into monitor mode using airmon-ng
+        subprocess.run(["sudo", "airmon-ng", "start", interface], check=True)
+
+        # Restart NetworkManager after setting the monitor mode
+        subprocess.run(["sudo", "systemctl", "restart", "NetworkManager"], check=True)
+
+        # Retrieve the new monitor mode interface name
+        result = subprocess.run(["iwconfig"], stdout=subprocess.PIPE, text=True)
+        for line in result.stdout.splitlines():
+            if "Mode:Monitor" in line:
+                interface_button.config(text=line.split()[0])
+                return 
+    except subprocess.CalledProcessError as e:
+        print(f"Error enabling monitor mode: {e}")
+        return None
+
 def scan_targets():
     """Displays WLAN interfaces as selectable buttons and navigates to the scanning page."""
     new_frame(content_frame)
@@ -245,7 +289,7 @@ def read_csv_results(file_path):
 def choose_attack_page(bssid, essid, channel, encryption):
     """Display a page to choose an attack type for the given target."""
     new_frame(content_frame)
-    weight_setup(4, 1)  # Adjust grid weights
+    weight_setup(5, 1)  # Adjust grid weights
     unified_title_font = tkFont.Font(family="Helvetica", size=36, weight="bold")
     unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
 
@@ -262,9 +306,13 @@ def choose_attack_page(bssid, essid, channel, encryption):
     crack_button = tk.Button(content_frame, text="Password Cracking Attack", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=lambda bssid=bssid, essid=essid, channel=channel, encryption=encryption:  password_crack_page(bssid,essid,channel,encryption))
     crack_button.grid(row=2, column=0, padx=10, pady=10, sticky="nsew")
 
+    # Evil twin attack button
+    evil_button = tk.Button(content_frame, text="Password Cracking Attack", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=evil_twin)
+    evil_button.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
+
     # Back button to return to results page
     back_button = tk.Button(content_frame, text="Back", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color, command=results_page)
-    back_button.grid(row=3, column=0, padx=10, pady=10, sticky="nsew")
+    back_button.grid(row=4, column=0, padx=10, pady=10, sticky="nsew")
 deauth_process = None
 def set_channel(interface, channel):
     """Set the wireless interface to a specific channel."""
@@ -586,14 +634,14 @@ def capture_sub_ghz():
     global freq_entry
 
     
-    unified_button_font = tkFont.Font(family="Helvetica", size=20, weight="bold")
+    unified_button_font = tkFont.Font(family="Helvetica", size=25, weight="bold")
     unified_title_font = tkFont.Font(family="Helvetica", size=30, weight="bold")
     
-    title_label = tk.Label(content_frame, text="Enter Frequency to Capture:", font=unified_title_font, bg=unified_bg_color, fg=unified_fg_color)
-    title_label.grid(row=0, column=0, columnspan=3, padx=10, pady=10, sticky="nsew")
+    title_label = tk.Label(content_frame, text="Enter Frequency to Capture:", font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
+    title_label.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="nsew")
 
-    freq_entry = tk.Entry(content_frame, width=10, font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
-    freq_entry.grid(row=0, column=2, pady=10, sticky='nsew')
+    freq_entry = tk.Entry(content_frame, width=15, font=unified_button_font, bg=unified_bg_color, fg=unified_fg_color)
+    freq_entry.grid(row=0, column=2, padx=10, pady=10, sticky='nsew')
     freq_entry.config(justify="center")  # Center horizontally
 
 
@@ -662,7 +710,7 @@ def receive_signal(output_file, frequency, sample_rate, if_gain, gain, timeout=N
 def stop_capturing(execute_button):
     global capturing_process, transmitting_process
     if capturing_process:
-        capturing_process.terminate()  # This sends SIGTERM, you could
+        capturing_process.terminate()  #SIGTERM
         capturing_process.wait()
         capturing_process = None
     if transmitting_process:
